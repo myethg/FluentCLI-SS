@@ -9,7 +9,6 @@ local slapEvent = game:GetService("ReplicatedStorage"):WaitForChild("Events"):Wa
 
 ui:init()
 
--- To keep track of loops so we can stop them
 local loopFlingRunning = false
 local loopSlapRunning = false
 
@@ -31,7 +30,6 @@ local function flingOnce(targets, power)
 end
 
 local function slapOnce(targets)
-    -- Default slap power ~10 (same vector * 10)
     return flingOnce(targets, 10)
 end
 
@@ -59,7 +57,7 @@ ui:add_command("loopfling", "Continuously fling player(s) with optional power (d
     task.spawn(function()
         while loopFlingRunning do
             flingOnce(targets, power)
-            task.wait(0.5) -- half-second delay between flings
+            task.wait(0.05) -- half-second delay between flings
         end
     end)
 
@@ -89,7 +87,7 @@ ui:add_command("loopslap", "Continuously slap player(s) with default power", {"p
     task.spawn(function()
         while loopSlapRunning do
             slapOnce(targets)
-            task.wait(0.5)
+            task.wait(0.05)
         end
     end)
 

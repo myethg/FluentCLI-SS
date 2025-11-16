@@ -1,4 +1,3 @@
-local player = game:Players.LocalPlayer
 local placeid = game.PlaceId
 
 local base = "https://raw.githubusercontent.com/myethg/FluentCLI-SS/main/games/"

@@ -7,8 +7,8 @@ local placeId = game.PlaceId
 local baseUrl = "https://raw.githubusercontent.com/myethg/FluentCLI-SS/main/games/"
 local url = baseUrl .. placeId .. ".luau"
 
-local success, response = pcall(function()
-    return HttpService:GetAsync(url)
+local success, result = pcall(function()
+    return game:HttpGet(url)
 end)
 
 if not success then

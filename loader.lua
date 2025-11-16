@@ -1,19 +1,32 @@
-local placeid = game.PlaceId
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
 
-local base = "https://raw.githubusercontent.com/myethg/FluentCLI-SS/main/games/"
-local url = base .. tostring(placeid) .. ".luau"
+local player = Players.LocalPlayer
+local placeId = game.PlaceId
 
-local success, result = pcall(function()
-    return game:HttpGet(url)
+local baseUrl = "https://raw.githubusercontent.com/myethg/FluentCLI-SS/main/games/"
+local url = baseUrl .. placeId .. ".luau"
+
+local success, response = pcall(function()
+    return HttpService:GetAsync(url)
 end)
 
-if success and result and not result:find("404") then
-    local load_success, error_msg = pcall(function()
-        loadstring(result)()
-    end)
-    
-    if not load_success then
-        warn("script failed to execute: " .. tostring(error_msg))
-    end
+if not success then
+    warn("[FluentCLI] Failed to fetch script for game:", placeId)
+    warn("HTTP Error:", response)
+    return
 end
--- shit loader
+
+-- Reject GitHub 404 file content
+if response == "" or response:match("^<!DOCTYPE html>") or response:find("404") then
+    warn("[FluentCLI] No loader script found for game:", placeId)
+    return
+end
+
+local runSuccess, err = pcall(function()
+    loadstring(response)()
+end)
+
+if not runSuccess then
+    warn("[FluentCLI] Script execution failed:", err)
+end

@@ -754,24 +754,25 @@ function library:init()
     }
     
     userinputservice.InputBegan:Connect(function(input, gameprocessed)
+        if not self.is_open then return end
+        
         if input.KeyCode == Enum.KeyCode.Insert then
             toggle_cli()
-        elseif input.KeyCode == Enum.KeyCode.Escape and self.is_open then
+        elseif input.KeyCode == Enum.KeyCode.Escape then
             toggle_cli()
-        elseif input.KeyCode == Enum.KeyCode.Return and self.is_open then
+        elseif input.KeyCode == Enum.KeyCode.Return then
             local cmd = commandinput.Text:gsub("\n", ""):gsub("\r", "")
             commandinput.Text = ""
             if cmd ~= "" then
                 execute_command(cmd)
-                autocompleteframe.Visible = false
             end
-        elseif input.KeyCode == Enum.KeyCode.Up and self.is_open then
+        elseif input.KeyCode == Enum.KeyCode.Up then
             if #self.command_history > 0 then
                 self.history_index = math.min(self.history_index + 1, #self.command_history)
                 commandinput.Text = self.command_history[#self.command_history - self.history_index + 1]
                 commandinput.CursorPosition = #commandinput.Text + 1
             end
-        elseif input.KeyCode == Enum.KeyCode.Down and self.is_open then
+        elseif input.KeyCode == Enum.KeyCode.Down then
             if self.history_index > 0 then
                 self.history_index = math.max(self.history_index - 1, 0)
                 if self.history_index == 0 then
@@ -781,8 +782,8 @@ function library:init()
                     commandinput.CursorPosition = #commandinput.Text + 1
                 end
             end
-        elseif input.KeyCode == Enum.KeyCode.Tab and self.is_open then
-            if #self.autocomplete_options > 0 then
+        elseif input.KeyCode == Enum.KeyCode.Tab then
+            if #self.autocomplete_options > 0 and autocompleteframe.Visible then
                 self.selected_index = (self.selected_index % #self.autocomplete_options) + 1
                 local words = commandinput.Text:split(" ")
                 words[#words] = self.autocomplete_options[self.selected_index].text
@@ -791,6 +792,12 @@ function library:init()
                 task.wait()
                 update_autocomplete(commandinput.Text)
             end
+        end
+    end)
+    
+    userinputservice.InputBegan:Connect(function(input, gameprocessed)
+        if input.KeyCode == Enum.KeyCode.Insert and not self.is_open then
+            toggle_cli()
         end
     end)
     

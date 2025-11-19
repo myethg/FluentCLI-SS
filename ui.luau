@@ -479,13 +479,14 @@ local function update_status()
     statusbar.Text = string.format("  Commands: %d | History: %d | Players: %d", 
         cmd_count, #library.command_history, #players:GetPlayers())
 end
-
 local function toggle_cli()
     library.is_open = not library.is_open
     
     if library.is_open then
         mainframe.Visible = true
         consoleframe.Visible = true
+        mainframe.BackgroundTransparency = 0
+        consoleframe.BackgroundTransparency = 0
         
         tweenservice:Create(mainframe, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
             Position = UDim2.new(0.5, -350, 0, 30)
@@ -495,14 +496,7 @@ local function toggle_cli()
             Position = UDim2.new(0.5, -350, 0, 120)
         }):Play()
         
-        tweenservice:Create(mainframe, TweenInfo.new(0.3), {
-            BackgroundTransparency = 0
-        }):Play()
-        
-        tweenservice:Create(consoleframe, TweenInfo.new(0.3), {
-            BackgroundTransparency = 0
-        }):Play()
-        
+        task.wait(0.2)
         commandinput:CaptureFocus()
         update_status()
         
@@ -521,14 +515,6 @@ local function toggle_cli()
         
         tweenservice:Create(consoleframe, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
             Position = UDim2.new(0.5, -350, 0, -450)
-        }):Play()
-        
-        tweenservice:Create(mainframe, TweenInfo.new(0.2), {
-            BackgroundTransparency = 1
-        }):Play()
-        
-        tweenservice:Create(consoleframe, TweenInfo.new(0.2), {
-            BackgroundTransparency = 1
         }):Play()
         
         task.wait(0.3)

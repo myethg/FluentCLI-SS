@@ -485,6 +485,25 @@ local function toggle_cli()
     if library.is_open then
         mainframe.Visible = true
         consoleframe.Visible = true
+        
+        for _, child in ipairs(mainframe:GetDescendants()) do
+            if child:IsA("Frame") or child:IsA("TextLabel") or child:IsA("TextBox") then
+                child.BackgroundTransparency = child.Name == "InputGlow" and 1 or 0
+                child.TextTransparency = 0
+            elseif child:IsA("UIStroke") then
+                child.Transparency = 0.3
+            end
+        end
+        
+        for _, child in ipairs(consoleframe:GetDescendants()) do
+            if child:IsA("Frame") or child:IsA("TextLabel") then
+                child.BackgroundTransparency = 0
+                child.TextTransparency = 0
+            elseif child:IsA("UIStroke") then
+                child.Transparency = 0.3
+            end
+        end
+        
         mainframe.BackgroundTransparency = 0
         consoleframe.BackgroundTransparency = 0
         
@@ -524,7 +543,6 @@ local function toggle_cli()
         commandinput:ReleaseFocus()
     end
 end
-
 local function create_gui()
     local sg = Instance.new("ScreenGui")
     sg.Name = "CommandLineInterface"

@@ -36,9 +36,9 @@ local function notify(message, color)
     uicorner.Parent = notifframe
     
     local uistroke = Instance.new("UIStroke")
-    uistroke.Color = color
+    uistroke.Color = Color3.fromRGB(80, 80, 90)
     uistroke.Thickness = 2
-    uistroke.Transparency = 0.5
+    uistroke.Transparency = 0.3
     uistroke.Parent = notifframe
     
     local glow = Instance.new("ImageLabel")
@@ -48,7 +48,7 @@ local function notify(message, color)
     glow.BackgroundTransparency = 1
     glow.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
     glow.ImageColor3 = color
-    glow.ImageTransparency = 0.8
+    glow.ImageTransparency = 0.95
     glow.ScaleType = Enum.ScaleType.Slice
     glow.SliceCenter = Rect.new(10, 10, 10, 10)
     glow.Parent = notifframe
@@ -98,7 +98,6 @@ local function notify(message, color)
     })
     
     slide_in:Play()
-    glow_pulse:Play()
     
     task.wait(3.5)
     
@@ -303,7 +302,7 @@ local function update_autocomplete(text)
         
         local typeindicator = Instance.new("Frame")
         typeindicator.Size = UDim2.new(0, 4, 0.7, 0)
-        typeindicator.Position = UDim2.new(0, 5, 0.15, 0)
+        typeindicator.Position = UDim2.new(0, 0, 0.15, 0)
         typeindicator.BackgroundColor3 = typecolor
         typeindicator.BorderSizePixel = 0
         typeindicator.Parent = suggestionbutton
@@ -311,6 +310,10 @@ local function update_autocomplete(text)
         local indicatorcorner = Instance.new("UICorner")
         indicatorcorner.CornerRadius = UDim.new(1, 0)
         indicatorcorner.Parent = typeindicator
+        
+        local padding = Instance.new("UIPadding")
+        padding.PaddingLeft = UDim.new(0, 12)
+        padding.Parent = suggestionbutton
         
         local desctext = Instance.new("TextLabel")
         desctext.Size = UDim2.new(1, -40, 1, 0)
@@ -378,6 +381,8 @@ local function execute_command(text)
     
     table.insert(library.command_history, text)
     library.history_index = 0
+    
+    autocompleteframe.Visible = false
     
     local words = text:split(" ")
     local cmdname = words[1]
@@ -555,7 +560,7 @@ local function create_gui()
     cc.Parent = cf
     
     local cs = Instance.new("UIStroke")
-    cs.Color = Color3.fromRGB(80, 80, 90)
+    cs.Color = Color3.fromRGB(100, 200, 255)
     cs.Thickness = 2
     cs.Transparency = 0.3
     cs.Parent = cf
@@ -585,7 +590,7 @@ local function create_gui()
     uicorner.Parent = mf
     
     local uistroke = Instance.new("UIStroke")
-    uistroke.Color = Color3.fromRGB(80, 80, 90)
+    uistroke.Color = Color3.fromRGB(100, 200, 255)
     uistroke.Thickness = 2
     uistroke.Transparency = 0.3
     uistroke.Parent = mf
@@ -634,8 +639,8 @@ local function create_gui()
     
     local ci = Instance.new("TextBox")
     ci.Name = "CommandInput"
-    ci.Size = UDim2.new(1, -30, 0, 35)
-    ci.Position = UDim2.new(0, 15, 0, 35)
+    ci.Size = UDim2.new(1, -30, 0, 30)
+    ci.Position = UDim2.new(0, 15, 0, 40)
     ci.BackgroundTransparency = 1
     ci.Font = Enum.Font.RobotoMono
     ci.TextSize = 16
@@ -782,8 +787,9 @@ function library:init()
                 local words = commandinput.Text:split(" ")
                 words[#words] = self.autocomplete_options[self.selected_index].text
                 commandinput.Text = table.concat(words, " ") .. " "
-                update_autocomplete(commandinput.Text)
                 commandinput.CursorPosition = #commandinput.Text + 1
+                task.wait()
+                update_autocomplete(commandinput.Text)
             end
         end
     end)

@@ -1,14 +1,37 @@
 --[[
-    FluentCLI - Clean Command Line Interface
+    FluentCLI - VSCode-Inspired Command Palette
     Press INSERT to toggle
 ]]
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 
 local LocalPlayer = Players.LocalPlayer
+
+-- Theme (VSCode Dark+)
+local Theme = {
+    Background = Color3.fromRGB(30, 30, 30),
+    BackgroundLight = Color3.fromRGB(37, 37, 38),
+    BackgroundLighter = Color3.fromRGB(45, 45, 46),
+    BackgroundHover = Color3.fromRGB(55, 55, 56),
+    Border = Color3.fromRGB(60, 60, 60),
+    BorderFocus = Color3.fromRGB(0, 122, 204),
+    Text = Color3.fromRGB(212, 212, 212),
+    TextDim = Color3.fromRGB(128, 128, 128),
+    TextMuted = Color3.fromRGB(90, 90, 90),
+    Accent = Color3.fromRGB(0, 122, 204),
+    AccentLight = Color3.fromRGB(47, 150, 218),
+    Success = Color3.fromRGB(78, 201, 176),
+    Error = Color3.fromRGB(244, 71, 71),
+    Warning = Color3.fromRGB(220, 185, 80),
+    Command = Color3.fromRGB(86, 156, 214),
+    Player = Color3.fromRGB(156, 220, 254),
+    Target = Color3.fromRGB(206, 145, 120),
+    String = Color3.fromRGB(206, 145, 120),
+}
 
 local Library = {
     Commands = {},
@@ -16,176 +39,173 @@ local Library = {
     CommandHistory = {},
     HistoryIndex = 0,
     IsOpen = false,
-    SelectedSuggestion = 0,
+    SelectedSuggestion = 1,
     Suggestions = {},
 }
 
--- GUI References
-local ScreenGui, MainFrame, InputBox, AutocompleteFrame, ConsoleFrame, StatusLabel
+local ScreenGui, MainFrame, InputBox, SuggestionsFrame, ConsoleFrame, StatusBar
 
---// Utility Functions
-local function Tween(object, time, properties, style, direction)
-    local tween = TweenService:Create(
-        object, 
-        TweenInfo.new(time, style or Enum.EasingStyle.Quad, direction or Enum.EasingDirection.Out),
-        properties
-    )
+-- Utility
+local function Tween(obj, time, props, style, dir)
+    local tween = TweenService:Create(obj, TweenInfo.new(time, style or Enum.EasingStyle.Quint, dir or Enum.EasingDirection.Out), props)
     tween:Play()
     return tween
 end
 
-local function Notify(message, color)
-    color = color or Color3.fromRGB(100, 200, 255)
+local function CreateShadow(parent, size, transparency)
+    local shadow = Instance.new("ImageLabel")
+    shadow.Name = "Shadow"
+    shadow.BackgroundTransparency = 1
+    shadow.Image = "rbxassetid://6014261993"
+    shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+    shadow.ImageTransparency = transparency or 0.5
+    shadow.ScaleType = Enum.ScaleType.Slice
+    shadow.SliceCenter = Rect.new(49, 49, 450, 450)
+    shadow.Size = UDim2.new(1, size or 50, 1, size or 50)
+    shadow.Position = UDim2.new(0, -(size or 50)/2, 0, -(size or 50)/2)
+    shadow.ZIndex = parent.ZIndex - 1
+    shadow.Parent = parent
+    return shadow
+end
+
+-- Notifications
+local function Notify(message, color, duration)
+    color = color or Theme.Accent
+    duration = duration or 3
     
     local gui = Instance.new("ScreenGui")
-    gui.Name = "FluentNotification"
+    gui.Name = "FluentNotify"
     gui.ResetOnSpawn = false
     gui.Parent = CoreGui
     
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 320, 0, 50)
-    frame.Position = UDim2.new(1, 20, 0, 20)
-    frame.BackgroundColor3 = Color3.fromRGB(20, 20, 26)
-    frame.BorderSizePixel = 0
-    frame.Parent = gui
+    local container = Instance.new("Frame")
+    container.Size = UDim2.new(0, 360, 0, 0)
+    container.Position = UDim2.new(1, -380, 1, -20)
+    container.AnchorPoint = Vector2.new(0, 1)
+    container.BackgroundColor3 = Theme.BackgroundLight
+    container.BorderSizePixel = 0
+    container.ClipsDescendants = true
+    container.Parent = gui
     
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 10)
-    corner.Parent = frame
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = container
     
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = color
-    stroke.Thickness = 1.5
-    stroke.Transparency = 0.5
-    stroke.Parent = frame
+    CreateShadow(container, 40, 0.6)
     
     local accent = Instance.new("Frame")
-    accent.Size = UDim2.new(0, 3, 0.6, 0)
-    accent.Position = UDim2.new(0, 8, 0.2, 0)
+    accent.Size = UDim2.new(0, 3, 1, 0)
     accent.BackgroundColor3 = color
     accent.BorderSizePixel = 0
-    accent.Parent = frame
+    accent.Parent = container
     
-    local accentCorner = Instance.new("UICorner")
-    accentCorner.CornerRadius = UDim.new(1, 0)
-    accentCorner.Parent = accent
+    local icon = Instance.new("TextLabel")
+    icon.Size = UDim2.new(0, 40, 1, 0)
+    icon.Position = UDim2.new(0, 3, 0, 0)
+    icon.BackgroundTransparency = 1
+    icon.Font = Enum.Font.GothamBold
+    icon.TextSize = 18
+    icon.TextColor3 = color
+    icon.Text = color == Theme.Error and "✕" or color == Theme.Warning and "⚠" or "✓"
+    icon.Parent = container
     
     local text = Instance.new("TextLabel")
-    text.Size = UDim2.new(1, -30, 1, 0)
-    text.Position = UDim2.new(0, 20, 0, 0)
+    text.Size = UDim2.new(1, -55, 1, 0)
+    text.Position = UDim2.new(0, 45, 0, 0)
     text.BackgroundTransparency = 1
     text.Font = Enum.Font.GothamMedium
-    text.TextSize = 14
-    text.TextColor3 = Color3.fromRGB(240, 240, 240)
+    text.TextSize = 13
+    text.TextColor3 = Theme.Text
     text.Text = message
     text.TextXAlignment = Enum.TextXAlignment.Left
     text.TextWrapped = true
-    text.Parent = frame
+    text.Parent = container
     
     -- Animate in
-    Tween(frame, 0.4, {Position = UDim2.new(1, -340, 0, 20)}, Enum.EasingStyle.Back)
+    Tween(container, 0.4, {Size = UDim2.new(0, 360, 0, 50)}, Enum.EasingStyle.Back)
     
-    task.delay(3, function()
-        Tween(frame, 0.3, {Position = UDim2.new(1, 20, 0, 20)}, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-        task.wait(0.3)
+    task.delay(duration, function()
+        Tween(container, 0.25, {Size = UDim2.new(0, 360, 0, 0)})
+        task.wait(0.25)
         gui:Destroy()
     end)
 end
 
+-- Console Logging
 local function AddLog(text, color)
     table.insert(Library.ConsoleLog, {
         Text = text,
-        Color = color or Color3.fromRGB(200, 200, 210),
+        Color = color or Theme.Text,
         Time = os.date("%H:%M:%S")
     })
-    
-    if #Library.ConsoleLog > 100 then
+    if #Library.ConsoleLog > 150 then
         table.remove(Library.ConsoleLog, 1)
     end
 end
 
+-- Player Parsing
 local function GetPlayers(target)
     local results = {}
     target = target:lower()
     
-    if target == "me" then
+    if target == "me" or target == "." then
         return {LocalPlayer}
-    elseif target == "all" then
+    elseif target == "all" or target == "*" then
         return Players:GetPlayers()
     elseif target == "others" then
         for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer then
-                table.insert(results, p)
-            end
+            if p ~= LocalPlayer then table.insert(results, p) end
         end
         return results
-    elseif target == "random" then
+    elseif target == "random" or target == "?" then
         local all = Players:GetPlayers()
-        if #all > 0 then
-            return {all[math.random(1, #all)]}
-        end
-        return {}
+        return #all > 0 and {all[math.random(1, #all)]} or {}
     end
     
-    -- Search by name
     for _, p in ipairs(Players:GetPlayers()) do
-        local name = p.Name:lower()
-        local display = p.DisplayName:lower()
-        if name == target or display == target or 
-           name:sub(1, #target) == target or display:sub(1, #target) == target then
+        if p.Name:lower():sub(1, #target) == target or p.DisplayName:lower():sub(1, #target) == target then
             table.insert(results, p)
         end
     end
-    
     return results
 end
 
---// Console Rendering
+-- Console Render
 local function RenderConsole()
+    if not ConsoleFrame then return end
     local scroll = ConsoleFrame:FindFirstChild("Scroll")
     if not scroll then return end
     
-    -- Clear existing
     for _, child in ipairs(scroll:GetChildren()) do
-        if child:IsA("Frame") then
-            child:Destroy()
-        end
+        if child:IsA("Frame") then child:Destroy() end
     end
-    
-    local layout = scroll:FindFirstChild("Layout") or Instance.new("UIListLayout")
-    layout.Name = "Layout"
-    layout.Padding = UDim.new(0, 2)
-    layout.Parent = scroll
     
     for i, entry in ipairs(Library.ConsoleLog) do
         local line = Instance.new("Frame")
-        line.Size = UDim2.new(1, -8, 0, 22)
-        line.BackgroundColor3 = i % 2 == 0 and Color3.fromRGB(22, 22, 28) or Color3.fromRGB(18, 18, 24)
-        line.BackgroundTransparency = 0.3
+        line.Size = UDim2.new(1, 0, 0, 20)
+        line.BackgroundColor3 = i % 2 == 0 and Theme.BackgroundLighter or Theme.BackgroundLight
+        line.BackgroundTransparency = 0.5
         line.BorderSizePixel = 0
+        line.LayoutOrder = i
         line.Parent = scroll
         
-        local lineCorner = Instance.new("UICorner")
-        lineCorner.CornerRadius = UDim.new(0, 4)
-        lineCorner.Parent = line
-        
         local time = Instance.new("TextLabel")
-        time.Size = UDim2.new(0, 55, 1, 0)
-        time.Position = UDim2.new(0, 6, 0, 0)
+        time.Size = UDim2.new(0, 65, 1, 0)
+        time.Position = UDim2.new(0, 10, 0, 0)
         time.BackgroundTransparency = 1
         time.Font = Enum.Font.RobotoMono
         time.TextSize = 11
-        time.TextColor3 = Color3.fromRGB(100, 100, 110)
+        time.TextColor3 = Theme.TextMuted
         time.Text = entry.Time
         time.TextXAlignment = Enum.TextXAlignment.Left
         time.Parent = line
         
         local msg = Instance.new("TextLabel")
-        msg.Size = UDim2.new(1, -70, 1, 0)
-        msg.Position = UDim2.new(0, 65, 0, 0)
+        msg.Size = UDim2.new(1, -85, 1, 0)
+        msg.Position = UDim2.new(0, 75, 0, 0)
         msg.BackgroundTransparency = 1
         msg.Font = Enum.Font.RobotoMono
-        msg.TextSize = 13
+        msg.TextSize = 12
         msg.TextColor3 = entry.Color
         msg.Text = entry.Text
         msg.TextXAlignment = Enum.TextXAlignment.Left
@@ -193,44 +213,56 @@ local function RenderConsole()
         msg.Parent = line
     end
     
-    scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
-    scroll.CanvasPosition = Vector2.new(0, scroll.CanvasSize.Y.Offset)
+    local layout = scroll:FindFirstChild("Layout")
+    if layout then
+        scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
+        scroll.CanvasPosition = Vector2.new(0, math.max(0, scroll.CanvasSize.Y.Offset - scroll.AbsoluteSize.Y))
+    end
 end
 
---// Autocomplete
+-- Suggestions
 local function GetSuggestions(text)
     local suggestions = {}
     local words = text:split(" ")
-    local current = words[#words] or ""
+    local current = (words[#words] or ""):lower()
+    local cmdName = words[1] and words[1]:lower() or ""
     
-    if #words == 1 then
+    if #words <= 1 then
         -- Command suggestions
         for name, cmd in pairs(Library.Commands) do
-            if name:lower():sub(1, #current:lower()) == current:lower() then
+            if current == "" or name:sub(1, #current) == current then
                 table.insert(suggestions, {
                     Text = name,
                     Desc = cmd.Desc,
-                    Type = "command"
+                    Type = "command",
+                    Icon = "⌘"
                 })
             end
         end
+        table.sort(suggestions, function(a, b) return a.Text < b.Text end)
     else
-        -- Player/target suggestions
-        local cmd = Library.Commands[words[1]]
-        if cmd and cmd.Args and cmd.Args[1] == "player" then
-            for _, target in ipairs({"me", "all", "others", "random"}) do
-                if target:sub(1, #current:lower()) == current:lower() then
-                    table.insert(suggestions, {Text = target, Desc = "Target", Type = "target"})
-                end
-            end
+        -- Argument suggestions
+        local cmd = Library.Commands[cmdName]
+        if cmd and cmd.Args then
+            local argIndex = #words - 1
+            local argType = cmd.Args[argIndex]
             
-            for _, p in ipairs(Players:GetPlayers()) do
-                if p.Name:lower():sub(1, #current:lower()) == current:lower() then
-                    table.insert(suggestions, {
-                        Text = p.Name,
-                        Desc = "@" .. p.DisplayName,
-                        Type = "player"
-                    })
+            if argType == "player" then
+                local targets = {"me", "all", "others", "random"}
+                for _, t in ipairs(targets) do
+                    if current == "" or t:sub(1, #current) == current then
+                        table.insert(suggestions, {Text = t, Desc = "Target selector", Type = "target", Icon = "◎"})
+                    end
+                end
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if current == "" or p.Name:lower():sub(1, #current) == current then
+                        table.insert(suggestions, {
+                            Text = p.Name,
+                            Desc = p.DisplayName,
+                            Type = "player",
+                            Icon = "👤"
+                        })
+                    end
                 end
             end
         end
@@ -239,90 +271,105 @@ local function GetSuggestions(text)
     return suggestions
 end
 
-local function RenderAutocomplete()
-    local scroll = AutocompleteFrame:FindFirstChild("Scroll")
-    if not scroll then return end
+local function RenderSuggestions()
+    if not SuggestionsFrame then return end
+    local container = SuggestionsFrame:FindFirstChild("Container")
+    if not container then return end
     
-    for _, child in ipairs(scroll:GetChildren()) do
-        if child:IsA("TextButton") then
-            child:Destroy()
-        end
+    for _, child in ipairs(container:GetChildren()) do
+        if child:IsA("TextButton") then child:Destroy() end
     end
     
     local suggestions = Library.Suggestions
     
     if #suggestions == 0 then
-        Tween(AutocompleteFrame, 0.15, {Size = UDim2.new(1, 0, 0, 0)})
-        task.delay(0.15, function()
-            AutocompleteFrame.Visible = false
-        end)
+        Tween(SuggestionsFrame, 0.15, {Size = UDim2.new(1, 0, 0, 0)})
         return
     end
     
-    local layout = scroll:FindFirstChild("Layout") or Instance.new("UIListLayout")
-    layout.Name = "Layout"
-    layout.Padding = UDim.new(0, 2)
-    layout.Parent = scroll
+    -- Clamp selected
+    Library.SelectedSuggestion = math.clamp(Library.SelectedSuggestion, 1, #suggestions)
     
     for i, sug in ipairs(suggestions) do
+        if i > 8 then break end -- Limit visible suggestions
+        
+        local isSelected = i == Library.SelectedSuggestion
+        
         local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(1, -6, 0, 28)
-        btn.BackgroundColor3 = i == Library.SelectedSuggestion and Color3.fromRGB(40, 40, 50) or Color3.fromRGB(28, 28, 35)
+        btn.Size = UDim2.new(1, -8, 0, 32)
+        btn.Position = UDim2.new(0, 4, 0, 0)
+        btn.BackgroundColor3 = isSelected and Theme.BackgroundHover or Theme.BackgroundLight
+        btn.BackgroundTransparency = isSelected and 0 or 1
         btn.BorderSizePixel = 0
-        btn.Font = Enum.Font.GothamMedium
-        btn.TextSize = 13
-        btn.TextColor3 = Color3.fromRGB(240, 240, 240)
-        btn.Text = "  " .. sug.Text
-        btn.TextXAlignment = Enum.TextXAlignment.Left
+        btn.Text = ""
         btn.AutoButtonColor = false
-        btn.Parent = scroll
+        btn.LayoutOrder = i
+        btn.Parent = container
         
         local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, 6)
+        corner.CornerRadius = UDim.new(0, 4)
         corner.Parent = btn
         
-        local typeColor = sug.Type == "command" and Color3.fromRGB(100, 200, 255) or
-                          sug.Type == "player" and Color3.fromRGB(100, 255, 150) or
-                          Color3.fromRGB(255, 200, 100)
+        -- Icon
+        local icon = Instance.new("TextLabel")
+        icon.Size = UDim2.new(0, 30, 1, 0)
+        icon.Position = UDim2.new(0, 8, 0, 0)
+        icon.BackgroundTransparency = 1
+        icon.Font = Enum.Font.GothamBold
+        icon.TextSize = 14
+        icon.TextColor3 = sug.Type == "command" and Theme.Command or sug.Type == "player" and Theme.Player or Theme.Target
+        icon.Text = sug.Icon or "•"
+        icon.Parent = btn
         
-        local indicator = Instance.new("Frame")
-        indicator.Size = UDim2.new(0, 3, 0.5, 0)
-        indicator.Position = UDim2.new(0, 4, 0.25, 0)
-        indicator.BackgroundColor3 = typeColor
-        indicator.BorderSizePixel = 0
-        indicator.Parent = btn
+        -- Name
+        local name = Instance.new("TextLabel")
+        name.Size = UDim2.new(0.5, -40, 1, 0)
+        name.Position = UDim2.new(0, 38, 0, 0)
+        name.BackgroundTransparency = 1
+        name.Font = Enum.Font.GothamMedium
+        name.TextSize = 13
+        name.TextColor3 = Theme.Text
+        name.Text = sug.Text
+        name.TextXAlignment = Enum.TextXAlignment.Left
+        name.Parent = btn
         
-        local indCorner = Instance.new("UICorner")
-        indCorner.CornerRadius = UDim.new(1, 0)
-        indCorner.Parent = indicator
-        
+        -- Description
         local desc = Instance.new("TextLabel")
-        desc.Size = UDim2.new(0.5, 0, 1, 0)
-        desc.Position = UDim2.new(0.5, -10, 0, 0)
+        desc.Size = UDim2.new(0.45, -10, 1, 0)
+        desc.Position = UDim2.new(0.55, 0, 0, 0)
         desc.BackgroundTransparency = 1
         desc.Font = Enum.Font.Gotham
         desc.TextSize = 11
-        desc.TextColor3 = Color3.fromRGB(130, 130, 140)
+        desc.TextColor3 = Theme.TextDim
         desc.Text = sug.Desc
         desc.TextXAlignment = Enum.TextXAlignment.Right
         desc.TextTruncate = Enum.TextTruncate.AtEnd
         desc.Parent = btn
         
-        if i == Library.SelectedSuggestion then
-            local stroke = Instance.new("UIStroke")
-            stroke.Color = typeColor
-            stroke.Thickness = 1
-            stroke.Transparency = 0.6
-            stroke.Parent = btn
+        -- Selection indicator
+        if isSelected then
+            local indicator = Instance.new("Frame")
+            indicator.Size = UDim2.new(0, 2, 0.6, 0)
+            indicator.Position = UDim2.new(0, 2, 0.2, 0)
+            indicator.BackgroundColor3 = Theme.Accent
+            indicator.BorderSizePixel = 0
+            indicator.Parent = btn
+            
+            local indCorner = Instance.new("UICorner")
+            indCorner.CornerRadius = UDim.new(1, 0)
+            indCorner.Parent = indicator
         end
         
+        -- Hover effects
         btn.MouseEnter:Connect(function()
-            Tween(btn, 0.1, {BackgroundColor3 = Color3.fromRGB(38, 38, 48)})
+            if not (i == Library.SelectedSuggestion) then
+                Tween(btn, 0.1, {BackgroundTransparency = 0.5})
+            end
         end)
         
         btn.MouseLeave:Connect(function()
-            if i ~= Library.SelectedSuggestion then
-                Tween(btn, 0.1, {BackgroundColor3 = Color3.fromRGB(28, 28, 35)})
+            if not (i == Library.SelectedSuggestion) then
+                Tween(btn, 0.1, {BackgroundTransparency = 1})
             end
         end)
         
@@ -332,28 +379,29 @@ local function RenderAutocomplete()
             InputBox.Text = table.concat(words, " ") .. " "
             InputBox.CursorPosition = #InputBox.Text + 1
             InputBox:CaptureFocus()
+            Library.Suggestions = GetSuggestions(InputBox.Text)
+            Library.SelectedSuggestion = 1
+            RenderSuggestions()
         end)
     end
     
-    local height = math.min(150, layout.AbsoluteContentSize.Y + 10)
-    AutocompleteFrame.Visible = true
-    Tween(AutocompleteFrame, 0.15, {Size = UDim2.new(1, 0, 0, height)})
-    scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y)
+    local layout = container:FindFirstChild("Layout")
+    local height = math.min(280, (layout and layout.AbsoluteContentSize.Y or 0) + 8)
+    Tween(SuggestionsFrame, 0.15, {Size = UDim2.new(1, 0, 0, height)})
 end
 
-local function UpdateAutocomplete(text)
+local function UpdateSuggestions(text)
     Library.Suggestions = GetSuggestions(text)
-    Library.SelectedSuggestion = 0
-    RenderAutocomplete()
+    Library.SelectedSuggestion = 1
+    RenderSuggestions()
 end
 
---// Command Execution
-local function ExecuteCommand(text)
-    text = text:gsub("^%s+", ""):gsub("%s+$", "") -- Trim
+-- Command Execution
+local function Execute(text)
+    text = text:gsub("^%s+", ""):gsub("%s+$", "")
     if text == "" then return end
     
-    AddLog("❯ " .. text, Color3.fromRGB(100, 200, 255))
-    
+    AddLog("› " .. text, Theme.AccentLight)
     table.insert(Library.CommandHistory, text)
     Library.HistoryIndex = 0
     
@@ -362,39 +410,42 @@ local function ExecuteCommand(text)
     local cmd = Library.Commands[cmdName]
     
     if not cmd then
-        AddLog("✗ Unknown command: " .. cmdName, Color3.fromRGB(255, 100, 100))
-        Notify("Unknown command", Color3.fromRGB(255, 100, 100))
+        AddLog("  Unknown command: " .. cmdName, Theme.Error)
+        Notify("Unknown command", Theme.Error)
         RenderConsole()
         return
     end
     
-    -- Built-in commands
-    if cmdName == "help" or cmdName == "cmds" then
-        AddLog("━━━━━━━━━━━━━━━━━━━━━━━━━━━━", Color3.fromRGB(80, 80, 90))
+    -- Built-ins
+    if cmdName == "help" or cmdName == "cmds" or cmdName == "commands" then
+        AddLog("─────────────────────────────", Theme.Border)
+        local sorted = {}
         for name, c in pairs(Library.Commands) do
-            local argStr = c.Args and #c.Args > 0 and " <" .. table.concat(c.Args, "> <") .. ">" or ""
-            AddLog(name .. argStr .. " - " .. c.Desc, Color3.fromRGB(200, 200, 210))
+            if name ~= "help" and name ~= "cmds" and name ~= "clear" and name ~= "commands" then
+                table.insert(sorted, {name = name, cmd = c})
+            end
         end
-        AddLog("━━━━━━━━━━━━━━━━━━━━━━━━━━━━", Color3.fromRGB(80, 80, 90))
+        table.sort(sorted, function(a, b) return a.name < b.name end)
+        for _, item in ipairs(sorted) do
+            local args = item.cmd.Args and #item.cmd.Args > 0 and " <" .. table.concat(item.cmd.Args, "> <") .. ">" or ""
+            AddLog("  " .. item.name .. args, Theme.Command)
+            AddLog("    " .. item.cmd.Desc, Theme.TextDim)
+        end
+        AddLog("─────────────────────────────", Theme.Border)
         RenderConsole()
         return
-    elseif cmdName == "clear" then
+    elseif cmdName == "clear" or cmdName == "cls" then
         Library.ConsoleLog = {}
         RenderConsole()
         return
     end
     
-    -- Execute command
+    -- Execute
     local success, result = pcall(function()
         if cmd.Args and cmd.Args[1] == "player" then
-            if #words < 2 then
-                return false, "Missing player target"
-            end
-            
+            if #words < 2 then return false, "Missing player target" end
             local targets = GetPlayers(words[2])
-            if #targets == 0 then
-                return false, "No players found: " .. words[2]
-            end
+            if #targets == 0 then return false, "No players found: " .. words[2] end
             
             if cmd.Args[2] == "text" then
                 table.remove(words, 1)
@@ -408,9 +459,7 @@ local function ExecuteCommand(text)
             return true, cmd.Func(table.concat(words, " "))
         elseif cmd.Args and cmd.Args[1] == "number" then
             local num = tonumber(words[2])
-            if not num then
-                return false, "Invalid number"
-            end
+            if not num then return false, "Invalid number" end
             return true, cmd.Func(num)
         else
             return true, cmd.Func()
@@ -419,25 +468,23 @@ local function ExecuteCommand(text)
     
     if success and result then
         if type(result) == "table" then
-            if result[1] then
-                AddLog("✓ " .. (result[2] or "Success"), Color3.fromRGB(100, 255, 150))
-                Notify(result[2] or "Success", Color3.fromRGB(100, 255, 150))
-            else
-                AddLog("✗ " .. (result[2] or "Failed"), Color3.fromRGB(255, 100, 100))
-                Notify(result[2] or "Failed", Color3.fromRGB(255, 100, 100))
-            end
+            local msg = result[2] or (result[1] and "Success" or "Failed")
+            local col = result[1] and Theme.Success or Theme.Error
+            AddLog("  " .. msg, col)
+            Notify(msg, col)
         elseif type(result) == "string" then
-            AddLog("✓ " .. result, Color3.fromRGB(100, 255, 150))
-            Notify(result, Color3.fromRGB(100, 255, 150))
+            AddLog("  " .. result, Theme.Success)
+            Notify(result, Theme.Success)
         end
     elseif not success then
-        AddLog("✗ Error: " .. tostring(result), Color3.fromRGB(255, 100, 100))
+        AddLog("  Error: " .. tostring(result), Theme.Error)
+        Notify("Error occurred", Theme.Error)
     end
     
     RenderConsole()
 end
 
---// Toggle UI
+-- Toggle
 local function Toggle()
     Library.IsOpen = not Library.IsOpen
     
@@ -445,25 +492,41 @@ local function Toggle()
         MainFrame.Visible = true
         ConsoleFrame.Visible = true
         
-        Tween(MainFrame, 0.35, {Position = UDim2.new(0.5, 0, 0, 25)}, Enum.EasingStyle.Back)
-        Tween(ConsoleFrame, 0.35, {Position = UDim2.new(0.5, 0, 0, 105)}, Enum.EasingStyle.Back)
+        Tween(MainFrame, 0.35, {
+            Position = UDim2.new(0.5, 0, 0.15, 0),
+            GroupTransparency = 0
+        }, Enum.EasingStyle.Back)
         
-        task.delay(0.1, function()
-            InputBox:CaptureFocus()
+        Tween(ConsoleFrame, 0.35, {
+            Position = UDim2.new(0.5, 0, 0.15, 68),
+            GroupTransparency = 0
+        }, Enum.EasingStyle.Back)
+        
+        task.delay(0.15, function()
+            if Library.IsOpen then
+                InputBox:CaptureFocus()
+            end
         end)
         
         -- Update status
-        local cmdCount = 0
-        for _ in pairs(Library.Commands) do cmdCount = cmdCount + 1 end
-        StatusLabel.Text = string.format("Commands: %d | Players: %d", cmdCount, #Players:GetPlayers())
+        local count = 0
+        for _ in pairs(Library.Commands) do count = count + 1 end
+        StatusBar.Text = string.format("%d commands • %d players • INSERT to close", count, #Players:GetPlayers())
     else
-        AutocompleteFrame.Visible = false
+        SuggestionsFrame.Visible = false
         InputBox:ReleaseFocus()
         
-        Tween(MainFrame, 0.25, {Position = UDim2.new(0.5, 0, 0, -120)}, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-        Tween(ConsoleFrame, 0.25, {Position = UDim2.new(0.5, 0, 0, -400)}, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+        Tween(MainFrame, 0.2, {
+            Position = UDim2.new(0.5, 0, 0, -100),
+            GroupTransparency = 1
+        })
         
-        task.delay(0.25, function()
+        Tween(ConsoleFrame, 0.2, {
+            Position = UDim2.new(0.5, 0, 0, -400),
+            GroupTransparency = 1
+        })
+        
+        task.delay(0.2, function()
             if not Library.IsOpen then
                 MainFrame.Visible = false
                 ConsoleFrame.Visible = false
@@ -472,188 +535,211 @@ local function Toggle()
     end
 end
 
---// Create GUI
+-- Create GUI
 local function CreateGUI()
     local gui = Instance.new("ScreenGui")
     gui.Name = "FluentCLI"
     gui.ResetOnSpawn = false
     gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    gui.DisplayOrder = 999
     
-    -- Console Frame (output)
-    local console = Instance.new("Frame")
+    -- Console Frame
+    local console = Instance.new("CanvasGroup")
     console.Name = "Console"
-    console.Size = UDim2.new(0, 650, 0, 280)
+    console.Size = UDim2.new(0, 600, 0, 280)
     console.Position = UDim2.new(0.5, 0, 0, -400)
     console.AnchorPoint = Vector2.new(0.5, 0)
-    console.BackgroundColor3 = Color3.fromRGB(16, 16, 22)
+    console.BackgroundColor3 = Theme.Background
     console.BorderSizePixel = 0
+    console.GroupTransparency = 1
     console.Visible = false
     console.Parent = gui
     
     local consoleCorner = Instance.new("UICorner")
-    consoleCorner.CornerRadius = UDim.new(0, 10)
+    consoleCorner.CornerRadius = UDim.new(0, 8)
     consoleCorner.Parent = console
     
     local consoleStroke = Instance.new("UIStroke")
-    consoleStroke.Color = Color3.fromRGB(60, 60, 70)
+    consoleStroke.Color = Theme.Border
     consoleStroke.Thickness = 1
     consoleStroke.Parent = console
     
+    CreateShadow(console, 60, 0.7)
+    
+    -- Console header
+    local consoleHeader = Instance.new("Frame")
+    consoleHeader.Size = UDim2.new(1, 0, 0, 32)
+    consoleHeader.BackgroundColor3 = Theme.BackgroundLight
+    consoleHeader.BorderSizePixel = 0
+    consoleHeader.Parent = console
+    
+    local headerCorner = Instance.new("UICorner")
+    headerCorner.CornerRadius = UDim.new(0, 8)
+    headerCorner.Parent = consoleHeader
+    
+    local headerFix = Instance.new("Frame")
+    headerFix.Size = UDim2.new(1, 0, 0, 10)
+    headerFix.Position = UDim2.new(0, 0, 1, -10)
+    headerFix.BackgroundColor3 = Theme.BackgroundLight
+    headerFix.BorderSizePixel = 0
+    headerFix.Parent = consoleHeader
+    
+    local consoleTitle = Instance.new("TextLabel")
+    consoleTitle.Size = UDim2.new(1, -20, 1, 0)
+    consoleTitle.Position = UDim2.new(0, 15, 0, 0)
+    consoleTitle.BackgroundTransparency = 1
+    consoleTitle.Font = Enum.Font.GothamMedium
+    consoleTitle.TextSize = 12
+    consoleTitle.TextColor3 = Theme.TextDim
+    consoleTitle.Text = "OUTPUT"
+    consoleTitle.TextXAlignment = Enum.TextXAlignment.Left
+    consoleTitle.Parent = consoleHeader
+    
     local consoleScroll = Instance.new("ScrollingFrame")
     consoleScroll.Name = "Scroll"
-    consoleScroll.Size = UDim2.new(1, -20, 1, -20)
-    consoleScroll.Position = UDim2.new(0, 10, 0, 10)
+    consoleScroll.Size = UDim2.new(1, -12, 1, -44)
+    consoleScroll.Position = UDim2.new(0, 6, 0, 38)
     consoleScroll.BackgroundTransparency = 1
     consoleScroll.BorderSizePixel = 0
-    consoleScroll.ScrollBarThickness = 4
-    consoleScroll.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 100)
+    consoleScroll.ScrollBarThickness = 6
+    consoleScroll.ScrollBarImageColor3 = Theme.Border
+    consoleScroll.ScrollBarImageTransparency = 0.3
+    consoleScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
     consoleScroll.Parent = console
     
-    -- Main Frame (input)
-    local main = Instance.new("Frame")
+    local scrollLayout = Instance.new("UIListLayout")
+    scrollLayout.Name = "Layout"
+    scrollLayout.Padding = UDim.new(0, 1)
+    scrollLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    scrollLayout.Parent = consoleScroll
+    
+    -- Main Frame (Command Palette)
+    local main = Instance.new("CanvasGroup")
     main.Name = "Main"
-    main.Size = UDim2.new(0, 650, 0, 70)
-    main.Position = UDim2.new(0.5, 0, 0, -120)
+    main.Size = UDim2.new(0, 600, 0, 60)
+    main.Position = UDim2.new(0.5, 0, 0, -100)
     main.AnchorPoint = Vector2.new(0.5, 0)
-    main.BackgroundColor3 = Color3.fromRGB(20, 20, 26)
+    main.BackgroundColor3 = Theme.Background
     main.BorderSizePixel = 0
+    main.GroupTransparency = 1
     main.Visible = false
     main.Parent = gui
     
     local mainCorner = Instance.new("UICorner")
-    mainCorner.CornerRadius = UDim.new(0, 10)
+    mainCorner.CornerRadius = UDim.new(0, 8)
     mainCorner.Parent = main
     
     local mainStroke = Instance.new("UIStroke")
-    mainStroke.Color = Color3.fromRGB(100, 180, 255)
-    mainStroke.Thickness = 1.5
+    mainStroke.Name = "Stroke"
+    mainStroke.Color = Theme.Border
+    mainStroke.Thickness = 1
     mainStroke.Parent = main
     
-    -- Title bar
-    local titleBar = Instance.new("Frame")
-    titleBar.Size = UDim2.new(1, 0, 0, 28)
-    titleBar.BackgroundColor3 = Color3.fromRGB(26, 26, 34)
-    titleBar.BorderSizePixel = 0
-    titleBar.Parent = main
+    CreateShadow(main, 60, 0.7)
     
-    local titleCorner = Instance.new("UICorner")
-    titleCorner.CornerRadius = UDim.new(0, 10)
-    titleCorner.Parent = titleBar
+    -- Search icon
+    local searchIcon = Instance.new("TextLabel")
+    searchIcon.Size = UDim2.new(0, 40, 0, 60)
+    searchIcon.Position = UDim2.new(0, 8, 0, 0)
+    searchIcon.BackgroundTransparency = 1
+    searchIcon.Font = Enum.Font.GothamBold
+    searchIcon.TextSize = 18
+    searchIcon.TextColor3 = Theme.Accent
+    searchIcon.Text = "❯"
+    searchIcon.Parent = main
     
-    local titleFix = Instance.new("Frame")
-    titleFix.Size = UDim2.new(1, 0, 0, 12)
-    titleFix.Position = UDim2.new(0, 0, 1, -12)
-    titleFix.BackgroundColor3 = Color3.fromRGB(26, 26, 34)
-    titleFix.BorderSizePixel = 0
-    titleFix.Parent = titleBar
-    
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(0, 150, 1, 0)
-    title.Position = UDim2.new(0, 12, 0, 0)
-    title.BackgroundTransparency = 1
-    title.Font = Enum.Font.GothamBold
-    title.TextSize = 13
-    title.TextColor3 = Color3.fromRGB(100, 180, 255)
-    title.Text = "⌘ FluentCLI"
-    title.TextXAlignment = Enum.TextXAlignment.Left
-    title.Parent = titleBar
-    
-    local status = Instance.new("TextLabel")
-    status.Name = "Status"
-    status.Size = UDim2.new(0.6, 0, 1, 0)
-    status.Position = UDim2.new(0.4, -10, 0, 0)
-    status.BackgroundTransparency = 1
-    status.Font = Enum.Font.Gotham
-    status.TextSize = 11
-    status.TextColor3 = Color3.fromRGB(100, 100, 120)
-    status.Text = "Commands: 0 | Players: 0"
-    status.TextXAlignment = Enum.TextXAlignment.Right
-    status.Parent = titleBar
-    
-    -- Input box
+    -- Input
     local input = Instance.new("TextBox")
     input.Name = "Input"
-    input.Size = UDim2.new(1, -24, 0, 28)
-    input.Position = UDim2.new(0, 12, 0, 34)
+    input.Size = UDim2.new(1, -60, 0, 60)
+    input.Position = UDim2.new(0, 48, 0, 0)
     input.BackgroundTransparency = 1
-    input.Font = Enum.Font.RobotoMono
+    input.Font = Enum.Font.GothamMedium
     input.TextSize = 15
-    input.TextColor3 = Color3.fromRGB(240, 240, 240)
-    input.PlaceholderText = "❯ Type a command..."
-    input.PlaceholderColor3 = Color3.fromRGB(90, 90, 110)
+    input.TextColor3 = Theme.Text
+    input.PlaceholderText = "Type a command or search..."
+    input.PlaceholderColor3 = Theme.TextDim
     input.Text = ""
     input.TextXAlignment = Enum.TextXAlignment.Left
     input.ClearTextOnFocus = false
     input.Parent = main
     
-    local inputLine = Instance.new("Frame")
-    inputLine.Size = UDim2.new(1, -24, 0, 2)
-    inputLine.Position = UDim2.new(0, 12, 1, -6)
-    inputLine.BackgroundColor3 = Color3.fromRGB(100, 180, 255)
-    inputLine.BackgroundTransparency = 0.7
-    inputLine.BorderSizePixel = 0
-    inputLine.Parent = main
+    -- Suggestions dropdown
+    local suggestions = Instance.new("Frame")
+    suggestions.Name = "Suggestions"
+    suggestions.Size = UDim2.new(1, 0, 0, 0)
+    suggestions.Position = UDim2.new(0, 0, 1, 4)
+    suggestions.BackgroundColor3 = Theme.Background
+    suggestions.BorderSizePixel = 0
+    suggestions.ClipsDescendants = true
+    suggestions.Visible = false
+    suggestions.Parent = main
     
-    local lineCorner = Instance.new("UICorner")
-    lineCorner.CornerRadius = UDim.new(1, 0)
-    lineCorner.Parent = inputLine
+    local sugCorner = Instance.new("UICorner")
+    sugCorner.CornerRadius = UDim.new(0, 8)
+    sugCorner.Parent = suggestions
     
-    -- Autocomplete frame
-    local autocomplete = Instance.new("Frame")
-    autocomplete.Name = "Autocomplete"
-    autocomplete.Size = UDim2.new(1, 0, 0, 0)
-    autocomplete.Position = UDim2.new(0, 0, 1, 6)
-    autocomplete.BackgroundColor3 = Color3.fromRGB(22, 22, 30)
-    autocomplete.BorderSizePixel = 0
-    autocomplete.Visible = false
-    autocomplete.ClipsDescendants = true
-    autocomplete.Parent = main
+    local sugStroke = Instance.new("UIStroke")
+    sugStroke.Color = Theme.Border
+    sugStroke.Thickness = 1
+    sugStroke.Parent = suggestions
     
-    local acCorner = Instance.new("UICorner")
-    acCorner.CornerRadius = UDim.new(0, 8)
-    acCorner.Parent = autocomplete
+    CreateShadow(suggestions, 40, 0.6)
     
-    local acStroke = Instance.new("UIStroke")
-    acStroke.Color = Color3.fromRGB(50, 50, 60)
-    acStroke.Thickness = 1
-    acStroke.Parent = autocomplete
+    local sugContainer = Instance.new("Frame")
+    sugContainer.Name = "Container"
+    sugContainer.Size = UDim2.new(1, 0, 1, -4)
+    sugContainer.Position = UDim2.new(0, 0, 0, 4)
+    sugContainer.BackgroundTransparency = 1
+    sugContainer.Parent = suggestions
     
-    local acScroll = Instance.new("ScrollingFrame")
-    acScroll.Name = "Scroll"
-    acScroll.Size = UDim2.new(1, -6, 1, -6)
-    acScroll.Position = UDim2.new(0, 3, 0, 3)
-    acScroll.BackgroundTransparency = 1
-    acScroll.BorderSizePixel = 0
-    acScroll.ScrollBarThickness = 3
-    acScroll.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 100)
-    acScroll.Parent = autocomplete
+    local sugLayout = Instance.new("UIListLayout")
+    sugLayout.Name = "Layout"
+    sugLayout.Padding = UDim.new(0, 2)
+    sugLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    sugLayout.Parent = sugContainer
+    
+    -- Status bar
+    local status = Instance.new("TextLabel")
+    status.Name = "Status"
+    status.Size = UDim2.new(1, -20, 0, 20)
+    status.Position = UDim2.new(0, 10, 1, -22)
+    status.BackgroundTransparency = 1
+    status.Font = Enum.Font.Gotham
+    status.TextSize = 10
+    status.TextColor3 = Theme.TextMuted
+    status.Text = "0 commands • 0 players • INSERT to close"
+    status.TextXAlignment = Enum.TextXAlignment.Right
+    status.Parent = console
     
     -- Input effects
     input.Focused:Connect(function()
-        Tween(inputLine, 0.2, {BackgroundTransparency = 0.3})
-        Tween(mainStroke, 0.2, {Color = Color3.fromRGB(100, 200, 255)})
+        Tween(mainStroke, 0.2, {Color = Theme.BorderFocus})
+        Tween(searchIcon, 0.2, {TextColor3 = Theme.AccentLight})
     end)
     
     input.FocusLost:Connect(function()
-        Tween(inputLine, 0.2, {BackgroundTransparency = 0.7})
-        Tween(mainStroke, 0.2, {Color = Color3.fromRGB(60, 60, 70)})
+        Tween(mainStroke, 0.2, {Color = Theme.Border})
+        Tween(searchIcon, 0.2, {TextColor3 = Theme.Accent})
     end)
     
-    return gui, main, input, autocomplete, console, status
+    return gui, main, input, suggestions, console, status
 end
 
---// Initialize
+-- Initialize
 function Library:Init()
-    ScreenGui, MainFrame, InputBox, AutocompleteFrame, ConsoleFrame, StatusLabel = CreateGUI()
+    ScreenGui, MainFrame, InputBox, SuggestionsFrame, ConsoleFrame, StatusBar = CreateGUI()
     ScreenGui.Parent = CoreGui
     
     -- Built-in commands
     self.Commands.help = {Desc = "Show all commands", Args = {}, Func = function() end}
-    self.Commands.cmds = {Desc = "List all commands", Args = {}, Func = function() end}
+    self.Commands.commands = {Desc = "Show all commands", Args = {}, Func = function() end}
+    self.Commands.cmds = {Desc = "List commands", Args = {}, Func = function() end}
     self.Commands.clear = {Desc = "Clear console", Args = {}, Func = function() end}
+    self.Commands.cls = {Desc = "Clear console", Args = {}, Func = function() end}
     
-    -- Input handling - SINGLE handler for toggle
-    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    -- Input handling
+    UserInputService.InputBegan:Connect(function(input, processed)
         if input.KeyCode == Enum.KeyCode.Insert then
             Toggle()
             return
@@ -663,73 +749,82 @@ function Library:Init()
         
         if input.KeyCode == Enum.KeyCode.Escape then
             Toggle()
-        elseif input.KeyCode == Enum.KeyCode.Return then
-            local cmd = InputBox.Text:gsub("\n", ""):gsub("\r", "")
+        elseif input.KeyCode == Enum.KeyCode.Return and not processed then
+            local cmd = InputBox.Text:gsub("[\n\r\t]", "")
             InputBox.Text = ""
-            ExecuteCommand(cmd)
+            SuggestionsFrame.Visible = false
+            Execute(cmd)
+            task.wait()
+            InputBox:CaptureFocus()
         elseif input.KeyCode == Enum.KeyCode.Up then
-            if #self.CommandHistory > 0 then
+            if #self.Suggestions > 0 then
+                self.SelectedSuggestion = self.SelectedSuggestion > 1 and self.SelectedSuggestion - 1 or #self.Suggestions
+                RenderSuggestions()
+            elseif #self.CommandHistory > 0 then
                 self.HistoryIndex = math.min(self.HistoryIndex + 1, #self.CommandHistory)
                 InputBox.Text = self.CommandHistory[#self.CommandHistory - self.HistoryIndex + 1]
                 InputBox.CursorPosition = #InputBox.Text + 1
             end
         elseif input.KeyCode == Enum.KeyCode.Down then
-            if self.HistoryIndex > 0 then
+            if #self.Suggestions > 0 then
+                self.SelectedSuggestion = self.SelectedSuggestion < #self.Suggestions and self.SelectedSuggestion + 1 or 1
+                RenderSuggestions()
+            elseif self.HistoryIndex > 0 then
                 self.HistoryIndex = self.HistoryIndex - 1
-                if self.HistoryIndex == 0 then
-                    InputBox.Text = ""
-                else
-                    InputBox.Text = self.CommandHistory[#self.CommandHistory - self.HistoryIndex + 1]
-                end
+                InputBox.Text = self.HistoryIndex == 0 and "" or self.CommandHistory[#self.CommandHistory - self.HistoryIndex + 1]
             end
         elseif input.KeyCode == Enum.KeyCode.Tab then
-            if #self.Suggestions > 0 then
-                self.SelectedSuggestion = (self.SelectedSuggestion % #self.Suggestions) + 1
+            if #self.Suggestions > 0 and self.SelectedSuggestion > 0 then
                 local words = InputBox.Text:split(" ")
                 words[#words] = self.Suggestions[self.SelectedSuggestion].Text
                 InputBox.Text = table.concat(words, " ") .. " "
                 InputBox.CursorPosition = #InputBox.Text + 1
+                self.Suggestions = GetSuggestions(InputBox.Text)
+                self.SelectedSuggestion = 1
                 task.wait()
-                RenderAutocomplete()
+                RenderSuggestions()
             end
         end
     end)
     
-    -- Text change
+    -- Text change handler
     InputBox:GetPropertyChangedSignal("Text"):Connect(function()
-        -- Clean tabs/newlines
         local text = InputBox.Text
-        local cleaned = text:gsub("\t", ""):gsub("\n", ""):gsub("\r", "")
+        local cleaned = text:gsub("[\t\n\r]", "")
         if cleaned ~= text then
             InputBox.Text = cleaned
+            return
         end
         
-        if InputBox.Text ~= "" then
-            UpdateAutocomplete(InputBox.Text)
+        if text ~= "" then
+            SuggestionsFrame.Visible = true
+            UpdateSuggestions(text)
         else
-            AutocompleteFrame.Visible = false
+            SuggestionsFrame.Visible = false
+            Tween(SuggestionsFrame, 0.15, {Size = UDim2.new(1, 0, 0, 0)})
         end
     end)
     
-    -- Keep focus while open
+    -- Auto-focus
     task.spawn(function()
         while true do
-            task.wait(0.2)
+            task.wait(0.3)
             if self.IsOpen and not InputBox:IsFocused() then
                 InputBox:CaptureFocus()
             end
         end
     end)
     
-    -- Welcome messages
-    AddLog("✓ FluentCLI initialized!", Color3.fromRGB(100, 255, 150))
-    AddLog("━━━━━━━━━━━━━━━━━━━━━━━━━━━━", Color3.fromRGB(60, 60, 70))
-    AddLog("Press INSERT to toggle", Color3.fromRGB(180, 180, 190))
-    AddLog("Type 'help' for commands", Color3.fromRGB(180, 180, 190))
-    AddLog("━━━━━━━━━━━━━━━━━━━━━━━━━━━━", Color3.fromRGB(60, 60, 70))
+    -- Welcome
+    AddLog("FluentCLI v2.0 loaded!", Theme.Success)
+    AddLog("─────────────────────────────", Theme.Border)
+    AddLog("Press INSERT to toggle", Theme.TextDim)
+    AddLog("Type 'help' for commands", Theme.TextDim)
+    AddLog("Use ↑↓ to navigate, TAB to complete", Theme.TextDim)
+    AddLog("─────────────────────────────", Theme.Border)
     RenderConsole()
     
-    Notify("FluentCLI loaded!", Color3.fromRGB(100, 255, 150))
+    Notify("FluentCLI loaded!", Theme.Success)
 end
 
 function Library:AddCommand(name, desc, args, func)
@@ -739,5 +834,9 @@ function Library:AddCommand(name, desc, args, func)
         Func = func
     }
 end
+
+-- Aliases
+Library.add_command = Library.AddCommand
+Library.init = Library.Init
 
 return Library

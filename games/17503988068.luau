@@ -458,3 +458,850 @@ ui:add_command("morphall", "Morph all players to character <character>", {"text"
     end
     return "Morphed " .. count .. " player(s) into " .. character_name
 end)
+
+-- ============================================
+-- TROLLING COMMANDS
+-- ============================================
+
+ui:add_command("ragdolloop", "Loop ragdoll on player(s)", {"player"}, function(targets)
+    for _, p in ipairs(targets) do
+        task.spawn(function()
+            while p.Character and p.Character:FindFirstChild("Character_Settings") do
+                core_replication:change_attribute(p.Character.Character_Settings, "Ragdoll", true)
+                task.wait(0.5)
+                core_replication:change_attribute(p.Character.Character_Settings, "Ragdoll", false)
+                task.wait(0.3)
+            end
+        end)
+    end
+    return "Loop ragdolling " .. #targets .. " player(s)"
+end)
+
+ui:add_command("spin", "Make player(s) spin forever", {"player"}, function(targets)
+    for _, p in ipairs(targets) do
+        if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local bv = Instance.new("BodyAngularVelocity")
+            bv.Name = "SpinForce"
+            bv.MaxTorque = Vector3.new(0, math.huge, 0)
+            bv.AngularVelocity = Vector3.new(0, 50, 0)
+            bv.Parent = p.Character.HumanoidRootPart
+        end
+    end
+    return "Spinning " .. #targets .. " player(s)"
+end)
+
+ui:add_command("unspin", "Stop player(s) from spinning", {"player"}, function(targets)
+    for _, p in ipairs(targets) do
+        if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local spin = p.Character.HumanoidRootPart:FindFirstChild("SpinForce")
+            if spin then spin:Destroy() end
+        end
+    end
+    return "Stopped spinning " .. #targets .. " player(s)"
+end)
+
+ui:add_command("tiny", "Make player(s) tiny", {"player"}, function(targets)
+    for _, p in ipairs(targets) do
+        if p.Character and p.Character:FindFirstChild("Humanoid") then
+            local humanoid = p.Character.Humanoid
+            local desc = humanoid:GetAppliedDescription()
+            desc.HeadScale = 0.3
+            desc.BodyTypeScale = 0.3
+            desc.DepthScale = 0.3
+            desc.HeightScale = 0.3
+            desc.WidthScale = 0.3
+            humanoid:ApplyDescription(desc)
+        end
+    end
+    return "Made " .. #targets .. " player(s) tiny"
+end)
+
+ui:add_command("giant", "Make player(s) giant", {"player"}, function(targets)
+    for _, p in ipairs(targets) do
+        if p.Character and p.Character:FindFirstChild("Humanoid") then
+            local humanoid = p.Character.Humanoid
+            local desc = humanoid:GetAppliedDescription()
+            desc.HeadScale = 3
+            desc.BodyTypeScale = 1
+            desc.DepthScale = 3
+            desc.HeightScale = 3
+            desc.WidthScale = 3
+            humanoid:ApplyDescription(desc)
+        end
+    end
+    return "Made " .. #targets .. " player(s) giant"
+end)
+
+ui:add_command("bighead", "Give player(s) big head", {"player"}, function(targets)
+    for _, p in ipairs(targets) do
+        if p.Character and p.Character:FindFirstChild("Humanoid") then
+            local humanoid = p.Character.Humanoid
+            local desc = humanoid:GetAppliedDescription()
+            desc.HeadScale = 5
+            humanoid:ApplyDescription(desc)
+        end
+    end
+    return "Big headed " .. #targets .. " player(s)"
+end)
+
+ui:add_command("normalsize", "Reset player(s) size", {"player"}, function(targets)
+    for _, p in ipairs(targets) do
+        if p.Character and p.Character:FindFirstChild("Humanoid") then
+            local humanoid = p.Character.Humanoid
+            local desc = humanoid:GetAppliedDescription()
+            desc.HeadScale = 1
+            desc.BodyTypeScale = 0
+            desc.DepthScale = 1
+            desc.HeightScale = 1
+            desc.WidthScale = 1
+            humanoid:ApplyDescription(desc)
+        end
+    end
+    return "Reset size for " .. #targets .. " player(s)"
+end)
+
+ui:add_command("freeze", "Freeze player(s) in place", {"player"}, function(targets)
+    for _, p in ipairs(targets) do
+        if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            p.Character.HumanoidRootPart.Anchored = true
+        end
+    end
+    return "Froze " .. #targets .. " player(s)"
+end)
+
+ui:add_command("thaw", "Unfreeze player(s)", {"player"}, function(targets)
+    for _, p in ipairs(targets) do
+        if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            p.Character.HumanoidRootPart.Anchored = false
+        end
+    end
+    return "Thawed " .. #targets .. " player(s)"
+end)
+
+ui:add_command("fling", "Fling player(s) into the sky", {"player"}, function(targets)
+    for _, p in ipairs(targets) do
+        if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local hrp = p.Character.HumanoidRootPart
+            hrp.Velocity = Vector3.new(math.random(-500, 500), 1000, math.random(-500, 500))
+        end
+    end
+    return "Flung " .. #targets .. " player(s)"
+end)
+
+ui:add_command("explode", "Explode on player(s)", {"player"}, function(targets)
+    for _, p in ipairs(targets) do
+        if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local explosion = Instance.new("Explosion")
+            explosion.Position = p.Character.HumanoidRootPart.Position
+            explosion.BlastRadius = 10
+            explosion.BlastPressure = 500000
+            explosion.Parent = workspace
+        end
+    end
+    return "Exploded on " .. #targets .. " player(s)"
+end)
+
+ui:add_command("naked", "Remove player(s) clothes", {"player"}, function(targets)
+    for _, p in ipairs(targets) do
+        if p.Character then
+            for _, item in ipairs(p.Character:GetDescendants()) do
+                if item:IsA("Shirt") or item:IsA("Pants") or item:IsA("ShirtGraphic") then
+                    core_replication:destroy(item)
+                end
+            end
+        end
+    end
+    return "Stripped " .. #targets .. " player(s)"
+end)
+
+ui:add_command("bald", "Remove player(s) hair", {"player"}, function(targets)
+    for _, p in ipairs(targets) do
+        if p.Character then
+            for _, item in ipairs(p.Character:GetDescendants()) do
+                if item:IsA("Accessory") then
+                    local handle = item:FindFirstChild("Handle")
+                    if handle and handle:FindFirstChild("HairAttachment") then
+                        core_replication:destroy(item)
+                    end
+                end
+            end
+        end
+    end
+    return "Made " .. #targets .. " player(s) bald"
+end)
+
+ui:add_command("noface", "Remove player(s) face", {"player"}, function(targets)
+    for _, p in ipairs(targets) do
+        if p.Character and p.Character:FindFirstChild("Head") then
+            local face = p.Character.Head:FindFirstChild("face") or p.Character.Head:FindFirstChild("Face")
+            if face then
+                core_replication:destroy(face)
+            end
+        end
+    end
+    return "Removed face from " .. #targets .. " player(s)"
+end)
+
+ui:add_command("trip", "Trip player(s)", {"player"}, function(targets)
+    for _, p in ipairs(targets) do
+        if p.Character and p.Character:FindFirstChild("Humanoid") then
+            p.Character.Humanoid:ChangeState(Enum.HumanoidStateType.FallingDown)
+        end
+    end
+    return "Tripped " .. #targets .. " player(s)"
+end)
+
+ui:add_command("platform", "Create platform at player(s)", {"player"}, function(targets)
+    for _, p in ipairs(targets) do
+        if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local platform = Instance.new("Part")
+            platform.Size = Vector3.new(10, 1, 10)
+            platform.Position = p.Character.HumanoidRootPart.Position + Vector3.new(0, 50, 0)
+            platform.Anchored = true
+            platform.BrickColor = BrickColor.new("Bright blue")
+            platform.Material = Enum.Material.Neon
+            platform.Parent = workspace
+            
+            p.Character.HumanoidRootPart.CFrame = platform.CFrame + Vector3.new(0, 3, 0)
+        end
+    end
+    return "Platformed " .. #targets .. " player(s)"
+end)
+
+ui:add_command("jail", "Put player(s) in jail", {"player"}, function(targets)
+    for _, p in ipairs(targets) do
+        if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local pos = p.Character.HumanoidRootPart.Position
+            
+            for i = 1, 4 do
+                local wall = Instance.new("Part")
+                wall.Size = Vector3.new(1, 10, 8)
+                wall.Anchored = true
+                wall.Transparency = 0.5
+                wall.BrickColor = BrickColor.new("Really black")
+                wall.Material = Enum.Material.ForceField
+                wall.Parent = workspace
+                
+                if i == 1 then wall.CFrame = CFrame.new(pos + Vector3.new(4, 5, 0))
+                elseif i == 2 then wall.CFrame = CFrame.new(pos + Vector3.new(-4, 5, 0))
+                elseif i == 3 then wall.CFrame = CFrame.new(pos + Vector3.new(0, 5, 4)) * CFrame.Angles(0, math.rad(90), 0)
+                else wall.CFrame = CFrame.new(pos + Vector3.new(0, 5, -4)) * CFrame.Angles(0, math.rad(90), 0) end
+            end
+            
+            local roof = Instance.new("Part")
+            roof.Size = Vector3.new(8, 1, 8)
+            roof.Position = pos + Vector3.new(0, 10, 0)
+            roof.Anchored = true
+            roof.Transparency = 0.5
+            roof.BrickColor = BrickColor.new("Really black")
+            roof.Material = Enum.Material.ForceField
+            roof.Parent = workspace
+        end
+    end
+    return "Jailed " .. #targets .. " player(s)"
+end)
+
+ui:add_command("fire", "Set player(s) on fire", {"player"}, function(targets)
+    for _, p in ipairs(targets) do
+        if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local fire = Instance.new("Fire")
+            fire.Size = 10
+            fire.Heat = 10
+            fire.Parent = p.Character.HumanoidRootPart
+        end
+    end
+    return "Set " .. #targets .. " player(s) on fire"
+end)
+
+ui:add_command("unfire", "Remove fire from player(s)", {"player"}, function(targets)
+    for _, p in ipairs(targets) do
+        if p.Character then
+            for _, item in ipairs(p.Character:GetDescendants()) do
+                if item:IsA("Fire") then
+                    item:Destroy()
+                end
+            end
+        end
+    end
+    return "Extinguished " .. #targets .. " player(s)"
+end)
+
+ui:add_command("sparkles", "Give player(s) sparkles", {"player"}, function(targets)
+    for _, p in ipairs(targets) do
+        if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local sparkles = Instance.new("Sparkles")
+            sparkles.SparkleColor = Color3.fromRGB(255, 255, 0)
+            sparkles.Parent = p.Character.HumanoidRootPart
+        end
+    end
+    return "Sparkled " .. #targets .. " player(s)"
+end)
+
+ui:add_command("smoke", "Give player(s) smoke", {"player"}, function(targets)
+    for _, p in ipairs(targets) do
+        if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local smoke = Instance.new("Smoke")
+            smoke.Size = 5
+            smoke.Opacity = 0.5
+            smoke.Parent = p.Character.HumanoidRootPart
+        end
+    end
+    return "Smoked " .. #targets .. " player(s)"
+end)
+
+ui:add_command("trail", "Give player(s) a trail", {"player"}, function(targets)
+    for _, p in ipairs(targets) do
+        if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local hrp = p.Character.HumanoidRootPart
+            local head = p.Character:FindFirstChild("Head")
+            if head then
+                local att0 = Instance.new("Attachment", hrp)
+                att0.Position = Vector3.new(0, -2, 0)
+                local att1 = Instance.new("Attachment", head)
+                att1.Position = Vector3.new(0, 0.5, 0)
+                
+                local trail = Instance.new("Trail")
+                trail.Attachment0 = att0
+                trail.Attachment1 = att1
+                trail.Lifetime = 1
+                trail.MinLength = 0.1
+                trail.Color = ColorSequence.new(Color3.fromRGB(255, 0, 255), Color3.fromRGB(0, 255, 255))
+                trail.Parent = p.Character
+            end
+        end
+    end
+    return "Trailed " .. #targets .. " player(s)"
+end)
+
+-- ============================================
+-- TELEPORT COMMANDS
+-- ============================================
+
+ui:add_command("tp", "Teleport to player <player>", {"player"}, function(targets)
+    if #targets > 0 and targets[1].Character and targets[1].Character:FindFirstChild("HumanoidRootPart") then
+        if character:FindFirstChild("HumanoidRootPart") then
+            character.HumanoidRootPart.CFrame = targets[1].Character.HumanoidRootPart.CFrame + Vector3.new(3, 0, 0)
+            return "Teleported to " .. targets[1].Name
+        end
+    end
+    return "Failed to teleport"
+end)
+
+ui:add_command("bring", "Bring player(s) to you", {"player"}, function(targets)
+    if character:FindFirstChild("HumanoidRootPart") then
+        local pos = character.HumanoidRootPart.CFrame
+        for i, p in ipairs(targets) do
+            if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                p.Character.HumanoidRootPart.CFrame = pos + Vector3.new(i * 3, 0, 0)
+            end
+        end
+        return "Brought " .. #targets .. " player(s)"
+    end
+    return "Failed to bring"
+end)
+
+ui:add_command("tpall", "Teleport all to you", {}, function()
+    if character:FindFirstChild("HumanoidRootPart") then
+        local pos = character.HumanoidRootPart.CFrame
+        local count = 0
+        for i, p in ipairs(players:GetPlayers()) do
+            if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                p.Character.HumanoidRootPart.CFrame = pos + Vector3.new(i * 3, 0, 0)
+                count = count + 1
+            end
+        end
+        return "Brought " .. count .. " player(s)"
+    end
+    return "Failed"
+end)
+
+ui:add_command("sky", "Teleport player(s) to sky", {"player"}, function(targets)
+    for _, p in ipairs(targets) do
+        if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            p.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame + Vector3.new(0, 500, 0)
+        end
+    end
+    return "Sent " .. #targets .. " player(s) to sky"
+end)
+
+ui:add_command("void", "Send player(s) to void", {"player"}, function(targets)
+    for _, p in ipairs(targets) do
+        if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            p.Character.HumanoidRootPart.CFrame = CFrame.new(0, -500, 0)
+        end
+    end
+    return "Voided " .. #targets .. " player(s)"
+end)
+
+-- ============================================
+-- UTILITY COMMANDS
+-- ============================================
+
+ui:add_command("noclip", "Toggle noclip", {}, function()
+    local noclipEnabled = false
+    local noclipConn = nil
+    
+    if _G.NoclipConnection then
+        _G.NoclipConnection:Disconnect()
+        _G.NoclipConnection = nil
+        return "Noclip disabled"
+    end
+    
+    _G.NoclipConnection = game:GetService("RunService").Stepped:Connect(function()
+        if player.Character then
+            for _, part in ipairs(player.Character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
+            end
+        end
+    end)
+    return "Noclip enabled"
+end)
+
+ui:add_command("fly", "Toggle fly", {}, function()
+    if _G.FlyEnabled then
+        _G.FlyEnabled = false
+        if _G.FlyBV then _G.FlyBV:Destroy() end
+        if _G.FlyBG then _G.FlyBG:Destroy() end
+        if character:FindFirstChild("Humanoid") then
+            character.Humanoid.PlatformStand = false
+        end
+        return "Fly disabled"
+    end
+    
+    _G.FlyEnabled = true
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return "Failed" end
+    
+    local bv = Instance.new("BodyVelocity")
+    bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+    bv.Velocity = Vector3.zero
+    bv.Parent = hrp
+    _G.FlyBV = bv
+    
+    local bg = Instance.new("BodyGyro")
+    bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+    bg.P = 9e4
+    bg.Parent = hrp
+    _G.FlyBG = bg
+    
+    character.Humanoid.PlatformStand = true
+    
+    local uis = game:GetService("UserInputService")
+    local cam = workspace.CurrentCamera
+    
+    game:GetService("RunService").RenderStepped:Connect(function()
+        if not _G.FlyEnabled then return end
+        local dir = Vector3.zero
+        if uis:IsKeyDown(Enum.KeyCode.W) then dir = dir + cam.CFrame.LookVector end
+        if uis:IsKeyDown(Enum.KeyCode.S) then dir = dir - cam.CFrame.LookVector end
+        if uis:IsKeyDown(Enum.KeyCode.A) then dir = dir - cam.CFrame.RightVector end
+        if uis:IsKeyDown(Enum.KeyCode.D) then dir = dir + cam.CFrame.RightVector end
+        if uis:IsKeyDown(Enum.KeyCode.Space) then dir = dir + Vector3.new(0, 1, 0) end
+        if uis:IsKeyDown(Enum.KeyCode.LeftShift) then dir = dir - Vector3.new(0, 1, 0) end
+        
+        bv.Velocity = dir.Magnitude > 0 and dir.Unit * 80 or Vector3.zero
+        bg.CFrame = cam.CFrame
+    end)
+    
+    return "Fly enabled (WASD + Space/Shift)"
+end)
+
+ui:add_command("esp", "Toggle ESP", {}, function()
+    if _G.ESPEnabled then
+        _G.ESPEnabled = false
+        for _, highlight in ipairs(workspace:GetDescendants()) do
+            if highlight.Name == "ESP_Highlight" then
+                highlight:Destroy()
+            end
+        end
+        return "ESP disabled"
+    end
+    
+    _G.ESPEnabled = true
+    
+    local function addESP(p)
+        if p == player then return end
+        if p.Character then
+            local existing = p.Character:FindFirstChild("ESP_Highlight")
+            if existing then existing:Destroy() end
+            
+            local highlight = Instance.new("Highlight")
+            highlight.Name = "ESP_Highlight"
+            highlight.FillColor = Color3.fromRGB(255, 0, 0)
+            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+            highlight.FillTransparency = 0.5
+            highlight.Parent = p.Character
+        end
+    end
+    
+    for _, p in ipairs(players:GetPlayers()) do
+        addESP(p)
+        p.CharacterAdded:Connect(function()
+            task.wait(1)
+            if _G.ESPEnabled then addESP(p) end
+        end)
+    end
+    
+    players.PlayerAdded:Connect(function(p)
+        p.CharacterAdded:Connect(function()
+            task.wait(1)
+            if _G.ESPEnabled then addESP(p) end
+        end)
+    end)
+    
+    return "ESP enabled"
+end)
+
+ui:add_command("fullbright", "Toggle fullbright", {}, function()
+    local lighting = game:GetService("Lighting")
+    if _G.FullbrightEnabled then
+        _G.FullbrightEnabled = false
+        lighting.Ambient = _G.OldAmbient or Color3.fromRGB(0, 0, 0)
+        lighting.Brightness = _G.OldBrightness or 1
+        lighting.FogEnd = _G.OldFogEnd or 100000
+        return "Fullbright disabled"
+    end
+    
+    _G.OldAmbient = lighting.Ambient
+    _G.OldBrightness = lighting.Brightness
+    _G.OldFogEnd = lighting.FogEnd
+    _G.FullbrightEnabled = true
+    
+    lighting.Ambient = Color3.fromRGB(255, 255, 255)
+    lighting.Brightness = 2
+    lighting.FogEnd = 100000
+    return "Fullbright enabled"
+end)
+
+ui:add_command("hidename", "Hide your nametag", {}, function()
+    if character:FindFirstChild("Head") then
+        local nametag = character.Head:FindFirstChild("Nametag")
+        if nametag then
+            core_replication:disappear(nametag)
+            return "Nametag hidden"
+        end
+    end
+    return "No nametag found"
+end)
+
+ui:add_command("showname", "Show your nametag", {}, function()
+    if character:FindFirstChild("Head") then
+        local nametag = character.Head:FindFirstChild("Nametag")
+        if nametag then
+            core_replication:appear(nametag, 0)
+            return "Nametag shown"
+        end
+    end
+    return "No nametag found"
+end)
+
+ui:add_command("copyname", "Copy player's name/bio/role <player>", {"player"}, function(targets)
+    if #targets > 0 and targets[1].Character then
+        local targetHead = targets[1].Character:FindFirstChild("Head")
+        local myHead = character:FindFirstChild("Head")
+        
+        if targetHead and myHead then
+            local theirTag = targetHead:FindFirstChild("Nametag")
+            local myTag = myHead:FindFirstChild("Nametag")
+            
+            if theirTag and myTag then
+                if theirTag:FindFirstChild("Roleplay_Name") and myTag:FindFirstChild("Roleplay_Name") then
+                    core_replication:set_text(myTag.Roleplay_Name, theirTag.Roleplay_Name.Text, "Roleplay_Name")
+                end
+                if theirTag:FindFirstChild("Biography") and myTag:FindFirstChild("Biography") then
+                    core_replication:set_text(myTag.Biography, theirTag.Biography.Text, "Biography")
+                end
+                if theirTag:FindFirstChild("Role") and myTag:FindFirstChild("Role") then
+                    core_replication:set_text(myTag.Role, theirTag.Role.Text, "Role")
+                end
+                return "Copied " .. targets[1].Name .. "'s nametag"
+            end
+        end
+    end
+    return "Failed to copy"
+end)
+
+ui:add_command("age", "Set age text", {"text"}, function(age)
+    if character:FindFirstChild("Head") then
+        local nametag = character.Head:FindFirstChild("Nametag")
+        if nametag and nametag:FindFirstChild("Age") then
+            core_replication:set_text(nametag.Age, age, "Age")
+            return "Set age to: " .. age
+        end
+    end
+    return "Failed to set age"
+end)
+
+ui:add_command("status", "Set status text", {"text"}, function(status)
+    if character:FindFirstChild("Head") then
+        local nametag = character.Head:FindFirstChild("Nametag")
+        if nametag and nametag:FindFirstChild("Status") then
+            core_replication:set_text(nametag.Status, status, "Status")
+            return "Set status to: " .. status
+        end
+    end
+    return "Failed to set status"
+end)
+
+-- ============================================
+-- SERVER/GAME INFO COMMANDS
+-- ============================================
+
+ui:add_command("players", "List all players", {}, function()
+    local list = {}
+    for _, p in ipairs(players:GetPlayers()) do
+        table.insert(list, p.Name)
+    end
+    return "Players: " .. table.concat(list, ", ")
+end)
+
+ui:add_command("serverinfo", "Show server info", {}, function()
+    local info = game.ReplicatedStorage:FindFirstChild("Game_Info")
+    if info then
+        local class = info:GetAttribute("Current_Class") or "None"
+        local period = info:GetAttribute("Period") or "?"
+        return "Class: " .. class .. " | Period: " .. tostring(period) .. " | Players: " .. #players:GetPlayers()
+    end
+    return "Players: " .. #players:GetPlayers()
+end)
+
+ui:add_command("rejoin", "Rejoin the server", {}, function()
+    game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
+    return "Rejoining..."
+end)
+
+ui:add_command("serverhop", "Hop to different server", {}, function()
+    local ts = game:GetService("TeleportService")
+    local servers = game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
+    for _, server in ipairs(servers.data) do
+        if server.id ~= game.JobId and server.playing < server.maxPlayers then
+            ts:TeleportToPlaceInstance(game.PlaceId, server.id, player)
+            return "Hopping..."
+        end
+    end
+    return "No servers found"
+end)
+
+-- ============================================
+-- FUN/CHAOS COMMANDS
+-- ============================================
+
+ui:add_command("disco", "Disco lights!", {}, function()
+    if _G.DiscoEnabled then
+        _G.DiscoEnabled = false
+        game:GetService("Lighting").Ambient = Color3.fromRGB(127, 127, 127)
+        return "Disco disabled"
+    end
+    
+    _G.DiscoEnabled = true
+    task.spawn(function()
+        local lighting = game:GetService("Lighting")
+        while _G.DiscoEnabled do
+            lighting.Ambient = Color3.fromRGB(math.random(0, 255), math.random(0, 255), math.random(0, 255))
+            task.wait(0.1)
+        end
+    end)
+    return "Disco enabled!"
+end)
+
+ui:add_command("earthquake", "Shake everyone's screen", {}, function()
+    task.spawn(function()
+        local cam = workspace.CurrentCamera
+        for i = 1, 50 do
+            local shake = CFrame.new(
+                math.random(-2, 2) / 10,
+                math.random(-2, 2) / 10,
+                math.random(-2, 2) / 10
+            )
+            cam.CFrame = cam.CFrame * shake
+            task.wait(0.02)
+        end
+    end)
+    return "EARTHQUAKE!"
+end)
+
+ui:add_command("confetti", "Spawn confetti on player(s)", {"player"}, function(targets)
+    for _, p in ipairs(targets) do
+        if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            for i = 1, 50 do
+                local part = Instance.new("Part")
+                part.Size = Vector3.new(0.2, 0.2, 0.2)
+                part.Position = p.Character.HumanoidRootPart.Position + Vector3.new(math.random(-5, 5), 10, math.random(-5, 5))
+                part.BrickColor = BrickColor.Random()
+                part.Material = Enum.Material.Neon
+                part.Parent = workspace
+                game:GetService("Debris"):AddItem(part, 5)
+            end
+        end
+    end
+    return "Confetti for " .. #targets .. " player(s)!"
+end)
+
+ui:add_command("orbit", "Orbit around player <player>", {"player"}, function(targets)
+    if #targets > 0 then
+        local target = targets[1]
+        if _G.OrbitConnection then
+            _G.OrbitConnection:Disconnect()
+            _G.OrbitConnection = nil
+            return "Stopped orbiting"
+        end
+        
+        local angle = 0
+        _G.OrbitConnection = game:GetService("RunService").Heartbeat:Connect(function()
+            if target.Character and target.Character:FindFirstChild("HumanoidRootPart") and character:FindFirstChild("HumanoidRootPart") then
+                angle = angle + 0.05
+                local x = math.cos(angle) * 8
+                local z = math.sin(angle) * 8
+                character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(x, 0, z)
+            end
+        end)
+        return "Orbiting " .. target.Name
+    end
+    return "No target"
+end)
+
+ui:add_command("annoy", "Annoy player by following them <player>", {"player"}, function(targets)
+    if #targets > 0 then
+        local target = targets[1]
+        if _G.AnnoyConnection then
+            _G.AnnoyConnection:Disconnect()
+            _G.AnnoyConnection = nil
+            return "Stopped annoying"
+        end
+        
+        _G.AnnoyConnection = game:GetService("RunService").Heartbeat:Connect(function()
+            if target.Character and target.Character:FindFirstChild("HumanoidRootPart") and character:FindFirstChild("HumanoidRootPart") then
+                character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, -2)
+            end
+        end)
+        return "Annoying " .. target.Name
+    end
+    return "No target"
+end)
+
+ui:add_command("toollist", "List available tools", {}, function()
+    local tools = {}
+    local folder = game.ReplicatedStorage:FindFirstChild("Tools")
+    if folder then
+        for _, tool in ipairs(folder:GetChildren()) do
+            if tool:IsA("Tool") then
+                table.insert(tools, tool.Name)
+            end
+        end
+    end
+    return "Tools: " .. (#tools > 0 and table.concat(tools, ", ") or "None found")
+end)
+
+ui:add_command("kill", "Kill player(s) character", {"player"}, function(targets)
+    for _, p in ipairs(targets) do
+        if p.Character then
+            local char_settings = p.Character:FindFirstChild("Character_Settings")
+            if char_settings then
+                core_replication:death(p, char_settings)
+            end
+        end
+    end
+    return "Killed " .. #targets .. " player(s)"
+end)
+
+ui:add_command("loopkill", "Loop kill player", {"player"}, function(targets)
+    if _G.LoopKillTarget then
+        _G.LoopKillTarget = nil
+        return "Stopped loop killing"
+    end
+    
+    if #targets > 0 then
+        _G.LoopKillTarget = targets[1]
+        task.spawn(function()
+            while _G.LoopKillTarget do
+                local p = _G.LoopKillTarget
+                if p.Character then
+                    local char_settings = p.Character:FindFirstChild("Character_Settings")
+                    if char_settings then
+                        core_replication:death(p, char_settings)
+                    end
+                end
+                task.wait(1)
+            end
+        end)
+        return "Loop killing " .. targets[1].Name
+    end
+    return "No target"
+end)
+
+ui:add_command("loopragdoll", "Loop ragdoll player", {"player"}, function(targets)
+    if _G.LoopRagdollTarget then
+        _G.LoopRagdollTarget = nil
+        return "Stopped loop ragdolling"
+    end
+    
+    if #targets > 0 then
+        _G.LoopRagdollTarget = targets[1]
+        task.spawn(function()
+            while _G.LoopRagdollTarget do
+                local p = _G.LoopRagdollTarget
+                if p.Character then
+                    local char_settings = p.Character:FindFirstChild("Character_Settings")
+                    if char_settings then
+                        core_replication:change_attribute(char_settings, "Ragdoll", true)
+                    end
+                end
+                task.wait(0.1)
+            end
+        end)
+        return "Loop ragdolling " .. targets[1].Name
+    end
+    return "No target"
+end)
+
+ui:add_command("fakelag", "Fake lag player(s)", {"player"}, function(targets)
+    for _, p in ipairs(targets) do
+        task.spawn(function()
+            for i = 1, 20 do
+                if p.Character and p.Character:FindFirstChild("Character_Settings") then
+                    core_replication:change_attribute(p.Character.Character_Settings, "Ragdoll", true)
+                    task.wait(0.05)
+                    core_replication:change_attribute(p.Character.Character_Settings, "Ragdoll", false)
+                    task.wait(0.05)
+                end
+            end
+        end)
+    end
+    return "Fake lagging " .. #targets .. " player(s)"
+end)
+
+ui:add_command("seizure", "Give player(s) a seizure", {"player"}, function(targets)
+    for _, p in ipairs(targets) do
+        task.spawn(function()
+            for i = 1, 30 do
+                if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                    p.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame * CFrame.Angles(math.random(), math.random(), math.random())
+                end
+                task.wait(0.05)
+            end
+        end)
+    end
+    return "Seizure for " .. #targets .. " player(s)"
+end)
+
+ui:add_command("glitch", "Glitch player(s) character", {"player"}, function(targets)
+    for _, p in ipairs(targets) do
+        if p.Character then
+            for _, part in ipairs(p.Character:GetDescendants()) do
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                    task.spawn(function()
+                        for i = 1, 20 do
+                            core_replication:disappear(part)
+                            task.wait(0.1)
+                            core_replication:appear(part, 0)
+                            task.wait(0.1)
+                        end
+                    end)
+                end
+            end
+        end
+    end
+    return "Glitching " .. #targets .. " player(s)"
+end)
